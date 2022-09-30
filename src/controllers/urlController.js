@@ -33,15 +33,15 @@ const createShortUrl = async function (req, res) {
         if (!isValid(longUrl)) { return res.status(400).send({ status: false, message: " longUrl is required " }); }
 
         if (longUrl) {
-            if (!urlRegex.test(longUrl)) { return res.status(400).send({ status: false, message: `${longUrl} is not a Valid long Url` }); }
+            if (!urlRegex.test(longUrl)) { return res.status(400).send({ status: false, message: `${longUrl} is not a Valid longUrl` }); }
         }
 
         if (!validUrl.isUri(longUrl)) {
-            return res.status(400).send({ status: false, message: "url invalid" })
+            return res.status(400).send({ status: false, message: "longUrl invalid" })
         }
 
         const shortUrlParesent = await urlModel.findOne({ longUrl: longUrl }).select({ _id: 0, createdAt: 0, updatedAt: 0, __v: 0 })
-        if (shortUrlParesent) return res.status(200).send({ status: true, message: "isalready exist", data: shortUrlParesent })
+        if (shortUrlParesent) return res.status(200).send({ status: true, data: shortUrlParesent })
 
         const urlCode = shortid.generate().toLocaleLowerCase()
 
@@ -57,9 +57,9 @@ const createShortUrl = async function (req, res) {
 
         let newData = { longUrl: longUrl, shortUrl: shortUrl, urlCode: urlCode }
 
-        let newData1 = await urlModel.create(newData)
-        const data = await urlModel.findOne({ longUrl }).select({ _id: 0, createdAt: 0, updatedAt: 0, __v: 0 })
-        return res.status(201).send({ status: true, message: "url sucessfully created", data: data })
+        await urlModel.create(newData)
+
+        return res.status(201).send({ status: true, message: "url sucessfully created", data: newData })
 
 
     } catch (error) {
