@@ -41,7 +41,7 @@ const createShortUrl = async function (req, res) {
         }
 
         const shortUrlParesent = await urlModel.findOne({ longUrl: longUrl }).select({ _id: 0, createdAt: 0, updatedAt: 0, __v: 0 })
-        if (shortUrlParesent) return res.status(400).send({ status: false, message: "isalready exist", data: shortUrlParesent })
+        if (shortUrlParesent) return res.status(200).send({ status: true, message: "isalready exist", data: shortUrlParesent })
 
         const urlCode = shortid.generate().toLocaleLowerCase()
 
