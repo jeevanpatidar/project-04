@@ -62,7 +62,8 @@ const createShortUrl = async function (req, res) {
 
         //check long url present in redis or not
         const cacheUrl = await GET_ASYNC(`${longUrl}`);
-        const shortUrlParesent = await urlModel.findOne({ longUrl: longUrl}).select({ shortUrl: 1, _id: 0 })
+        const shortUrlParesent = await urlModel.findOne({ longUrl: longUrl }).select({ _id: 0, createdAt: 0, updatedAt: 0, __v: 0 })
+
         if (cacheUrl) {
             return res.status(200).send({ status: true, data: shortUrlParesent })
         }
@@ -82,7 +83,7 @@ const createShortUrl = async function (req, res) {
         let newData = { longUrl: longUrl, shortUrl: shortUrl, urlCode: urlCode }
 
         await urlModel.create(newData)
-        const data = await urlModel.findOne({longUrl}).select({_id: 0, createdAt: 0, updatedAt: 0, __v: 0})
+        const data = await urlModel.findOne({ longUrl }).select({ _id: 0, createdAt: 0, updatedAt: 0, __v: 0 })
 
         await SET_ASYNC(`${longUrl}`, JSON.stringify(data));
         return res.status(201).send({ status: true, message: "url sucessfully created", data: data })
@@ -106,11 +107,21 @@ const getUrlCode = async function (req, res) {
             return res.status(400).send({ status: false, message: `${urlCode} is invalid` })
         }
 
+
+        // url code present in cache/redis or not
+        const getShortUrl = await GET_ASYNC(`${urlCode}`);
+        //if present redirect to long url
+        if (getShortUrl) {
+            //JSON.parse- parses a string and returns a object
+            return res.status(302).redirect(JSON.parse(getShortUrl).longUrl);
+        }
         const data = await urlModel.findOne({ urlCode: urlCode });
 
         if (!data) { return res.status(400).send({ status: false, message: `${urlCode} urlCode not found!!` }) }
 
         if (data) {
+            //set url code in redis
+            await SET_ASYNC(`${urlCode}`, JSON.stringify(data));
             res.status(302).redirect(data.longUrl)
         };
 
