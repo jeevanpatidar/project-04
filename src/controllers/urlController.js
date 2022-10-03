@@ -2,6 +2,25 @@ const urlModel = require("../models/urlModel")
 const shortid = require('shortid');
 const validUrl = require('valid-url')
 const redis = require('redis')
+const { promisify } = require("util");
+
+
+//create connection to redis
+const redisClient = redis.createClient(
+    11687, //redis port
+    "redis-11687.c212.ap-south-1-1.ec2.cloud.redislabs.com", //redis db url
+    { no_ready_check: true }
+);
+redisClient.auth("mydk3XQtTL5xMgpoBPjvSjqBDv4j1mqP", function (err) {  //redis db password
+    if (err) throw err;
+});
+redisClient.on("connect", async function () { //build connection with redis db
+    console.log("connected to redis");
+});
+
+//set Get and Set for cache
+const SET_ASYNC = promisify(redisClient.SET).bind(redisClient);
+const GET_ASYNC = promisify(redisClient.GET).bind(redisClient);
 
 
 //-----Validation----//
@@ -30,6 +49,7 @@ const createShortUrl = async function (req, res) {
         if (!isValidRequestBody(bodyData)) return res.status(400).send({ status: false, message: " body cant't be empty Please enter some data." });
 
         longUrl = bodyData.longUrl
+
         if (!isValid(longUrl)) { return res.status(400).send({ status: false, message: " longUrl is required " }); }
 
         if (longUrl) {
@@ -40,10 +60,14 @@ const createShortUrl = async function (req, res) {
             return res.status(400).send({ status: false, message: "longUrl invalid" })
         }
 
-        const shortUrlParesent = await urlModel.findOne({ longUrl: longUrl }).select({ _id: 0, createdAt: 0, updatedAt: 0, __v: 0 })
-        if (shortUrlParesent) return res.status(200).send({ status: true, data: shortUrlParesent })
+        //check long url present in redis or not
+        const cacheUrl = await GET_ASYNC(`${longUrl}`);
+        const shortUrlParesent = await urlModel.findOne({ longUrl: longUrl}).select({ shortUrl: 1, _id: 0 })
+        if (cacheUrl) {
+            return res.status(200).send({ status: true, data: shortUrlParesent })
+        }
 
-        const urlCode = shortid.generate().toLocaleLowerCase()
+        const urlCode = shortid.generate().toLowerCase()
 
         const alreadyExist = await urlModel.findOne({ urlCode: urlCode })
         if (alreadyExist) {
@@ -58,8 +82,10 @@ const createShortUrl = async function (req, res) {
         let newData = { longUrl: longUrl, shortUrl: shortUrl, urlCode: urlCode }
 
         await urlModel.create(newData)
+        const data = await urlModel.findOne({longUrl}).select({_id: 0, createdAt: 0, updatedAt: 0, __v: 0})
 
-        return res.status(201).send({ status: true, message: "url sucessfully created", data: newData })
+        await SET_ASYNC(`${longUrl}`, JSON.stringify(data));
+        return res.status(201).send({ status: true, message: "url sucessfully created", data: data })
 
 
     } catch (error) {
