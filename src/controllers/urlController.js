@@ -7,11 +7,11 @@ const { promisify } = require("util");
 
 //create connection to redis
 const redisClient = redis.createClient(
-    11687, //redis port
-    "redis-11687.c212.ap-south-1-1.ec2.cloud.redislabs.com", //redis db url
+    17920, //redis port
+    "redis-17920.c301.ap-south-1-1.ec2.cloud.redislabs.com", //redis db url
     { no_ready_check: true }
 );
-redisClient.auth("mydk3XQtTL5xMgpoBPjvSjqBDv4j1mqP", function (err) {  //redis db password
+redisClient.auth("mTbvsPH8cxzG6r116Sb8wpT6JX4yfJN2", function (err) {  //redis db password
     if (err) throw err;
 });
 redisClient.on("connect", async function () { //build connection with redis db
@@ -59,7 +59,6 @@ const createShortUrl = async function (req, res) {
         if (!validUrl.isUri(longUrl)) {
             return res.status(400).send({ status: false, message: "longUrl invalid" })
         }
-
         //check long url present in redis or not
         const cacheUrl = await GET_ASYNC(`${longUrl}`);
         const shortUrlParesent = await urlModel.findOne({ longUrl: longUrl }).select({ _id: 0, createdAt: 0, updatedAt: 0, __v: 0 })
