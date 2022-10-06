@@ -116,7 +116,7 @@ const getUrlCode = async function (req, res) {
         }
         const data = await urlModel.findOne({ urlCode: urlCode });
 
-        if (!data) { return res.status(400).send({ status: false, message: `${urlCode} urlCode not found!!` }) }
+        if (!data) { return res.status(404).send({ status: false, message: `${urlCode} urlCode not found!!` }) }
 
         if (data) {
             //set url code in redis
