@@ -11,10 +11,6 @@ router.post('/url/shorten', createShortUrl)
 router.get('/:urlCode', getUrlCode)
 
 
-
-
-
-
 router.all("/*", (req, res) => { res.status(400).send({ status: false, message: "Endpoint is not correct plese provide a proper end-point" }) })
 
 

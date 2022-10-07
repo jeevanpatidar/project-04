@@ -7,22 +7,23 @@ const { promisify } = require("util");
 
 //create connection to redis
 const redisClient = redis.createClient(
-    17920, //redis port
-    "redis-17920.c301.ap-south-1-1.ec2.cloud.redislabs.com", //redis db url
+    18035, //redis port
+    "redis-18035.c301.ap-south-1-1.ec2.cloud.redislabs.com", //redis db url
     { no_ready_check: true }
 );
-redisClient.auth("mTbvsPH8cxzG6r116Sb8wpT6JX4yfJN2", function (err) {  //redis db password
+redisClient.auth("0UWffgbIaZbsFS4YyPpTcDiSmpxBacL4", function (err) {  //redis db password
     if (err) throw err;
 });
 redisClient.on("connect", async function () { //build connection with redis db
     console.log("connected to redis");
 });
-
 //set Get and Set for cache
 const SET_ASYNC = promisify(redisClient.SET).bind(redisClient);
 const GET_ASYNC = promisify(redisClient.GET).bind(redisClient);
-
-
+/*
+const SETEX_ASYNC = promisify(redisClient.SETEX).bind(redisClient);
+await SETEX_ASYNC(`${longUrl}`, 60//EX-Time//, JSON.stringify({ longUrl }))
+*/
 //-----Validation----//
 
 const isValid = (value) => {
@@ -61,11 +62,16 @@ const createShortUrl = async function (req, res) {
         }
         //check long url present in redis or not
         const cacheUrl = await GET_ASYNC(`${longUrl}`);
-        const shortUrlParesent = await urlModel.findOne({ longUrl: longUrl }).select({ _id: 0, createdAt: 0, updatedAt: 0, __v: 0 })
-
         if (cacheUrl) {
-            return res.status(200).send({ status: true, data: shortUrlParesent })
+           return res.status(200).send({ status: true,msg:"data from cache " ,data: JSON.parse(cacheUrl) })  
         }
+
+        if (!cacheUrl) {
+            const shortUrlParesent = await urlModel.findOne({ longUrl: longUrl }).select({ _id: 0, createdAt: 0, updatedAt: 0, __v: 0 })
+            if(shortUrlParesent){
+                await SET_ASYNC(`${longUrl}`, JSON.stringify(shortUrlParesent))
+            return res.status(200).send({ status: true,msg:"data from DB" ,data: shortUrlParesent })
+        } }
 
         const urlCode = shortid.generate().toLowerCase()
 
@@ -82,10 +88,9 @@ const createShortUrl = async function (req, res) {
         let newData = { longUrl: longUrl, shortUrl: shortUrl, urlCode: urlCode }
 
         await urlModel.create(newData)
-        const data = await urlModel.findOne({ longUrl }).select({ _id: 0, createdAt: 0, updatedAt: 0, __v: 0 })
 
-        await SET_ASYNC(`${longUrl}`, JSON.stringify(data));
-        return res.status(201).send({ status: true, message: "url sucessfully created", data: data })
+        await SET_ASYNC(`${longUrl}`, JSON.stringify(newData));
+        return res.status(201).send({ status: true, message: "url sucessfully created", data: newData })
 
 
     } catch (error) {
@@ -94,9 +99,7 @@ const createShortUrl = async function (req, res) {
 }
 
 
-
-
-//-------------------------------------------------Get url Code-----------------------------------------------------------
+//-------------------------------------------------Get url Code--------------------------------------------------
 
 const getUrlCode = async function (req, res) {
     try {
